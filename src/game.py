@@ -11,6 +11,8 @@ import json
 import signal
 from contextlib import contextmanager
 import os
+import traceback
+
 
 from .structure import *
 from .player import *
@@ -168,9 +170,19 @@ class Game:
         self.p1_name = p1_path
         self.p2_name = p2_path
 
-        self.MyPlayer1 = import_file("Player1", p1_path).MyPlayer
-        self.MyPlayer2 = import_file("Player2", p2_path).MyPlayer
         self.PlayerDQ = Player
+        try:
+            self.MyPlayer1 = import_file("Player1", p1_path).MyPlayer
+        except Exception as e:
+            print(f"Issue with loading player 1")
+            traceback.print_exc()
+            self.MyPlayer1 = Player
+        try:
+            self.MyPlayer2 = import_file("Player2", p2_path).MyPlayer
+        except Exception as e:
+            print(f"Issue with loading player 2")
+            traceback.print_exc()
+            self.MyPlayer2 = Player
 
         self.p1_state = PlayerInfo(Team.RED)
         self.p2_state = PlayerInfo(Team.BLUE)
@@ -191,10 +203,16 @@ class Game:
                 except TimeoutException as _:
                     state.time_bank.windows_warning()
                     print(f"[INIT TIMEOUT] {state.team}'s bot used >{GC.INIT_TIME_LIMIT} seconds to initialize; it will not play.")
-                    state.dq = True
                     if state == self.p1_state:
                         self.p1 = self.PlayerDQ()
                     else: self.p2 = self.PlayerDQ()
+                except Exception as e:
+                    print(f"[INIT TIMEOUT] {state.team}'s had an Exception")
+                    traceback.print_exc()
+                    if state == self.p1_state:
+                        self.p1 = self.PlayerDQ()
+                    else: self.p2 = self.PlayerDQ()
+
 
         self.winner = None
 
@@ -488,9 +506,10 @@ class Game:
                     state.time_bank.windows_warning()
                     print(f"[{GC.TIMEOUT} ROUND TIMEOUT START] {state.team} emptied their time bank.")
                     state.time_bank.paused_at = turn_num
+                except Exception as e:
+                    print("Exception from", state.team)
+                    traceback.print_exc()
             else:
-                if state.dq:
-                    print(f"{state.team} turn skipped - DQ'ed")
                 print(f"{state.team} turn skipped - in timeout")
         # update game state based on player actions
         # give build priority based on bid
