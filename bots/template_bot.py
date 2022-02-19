@@ -76,7 +76,6 @@ class MyPlayer(Player):
             border = []
             X = set([x for x,y in comp])
             Y = set([y for x,y in comp])
-            print(comp)
             x1, x2 = min(X) - 1, max(X) + 1
             y1, y2 = min(Y) - 1, max(Y) + 1
             for x,y in P(range(x1,x2 +1), range(y1, y2 + 1)):
