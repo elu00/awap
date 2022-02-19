@@ -20,20 +20,19 @@ class MyPlayer(Player):
 
         return
 
+    # Helper functions
     def make_2d_array(self, val):
         return [[val for _ in range(self.MAP_HEIGHT)] for _ in range(self.MAP_WIDTH)]
     def inside(self, x, y):
         return 0 <= x and x < self.MAP_WIDTH and 0 <= y and y < self.MAP_HEIGHT
-
-    # use rectangle of each CC
-    def cost_to_box(self, map, player_info):
-        
-        return 
+    def other_team(self, team):
+        return Team.BLUE if team == Team.RED else Team.BLUE
 
     # returns conn comp from a team's structure
     def grow(self, map, st):
         Q = [(st.x, st.y)]
         vis = self.make_2d_array(False)
+        vis[st.x][st.y] = True
         while len(Q) > 0:
             x,y = Q[-1]
             Q.pop()
@@ -74,6 +73,7 @@ class MyPlayer(Player):
         borders = []
         for comp in comps:
             border = []
+            #Could be better
             X = set([x for x,y in comp])
             Y = set([y for x,y in comp])
             x1, x2 = min(X) - 1, max(X) + 1
@@ -88,16 +88,16 @@ class MyPlayer(Player):
     def evaluate(self, x, y, map, served):
         d_util = 0
 
-        def inside(x,y):
-            return 0 <= x and x < self.MAP_WIDTH and 0 <= y and y < self.MAP_HEIGHT
-        
         for dx,dy in self.tower_reach:
             nx, ny = x + dx, y + dy
-            if inside(nx,ny) and served[nx][ny] == 0:
+            if self.inside(nx,ny) and served[nx][ny] == 0:
                 d_util += map[nx][ny].population
 
         return d_util
     
+    def dijkstra(self, map, team):
+        return False
+
 
     def play_turn(self, turn_num, map, player_info):
         self.turn = turn_num
@@ -106,24 +106,18 @@ class MyPlayer(Player):
         
         self.box_them(map, player_info)
 
-
-        dist = [[float("inf")] * self.MAP_HEIGHT for _ in range(self.MAP_WIDTH)]
-        parents = [[-1] * self.MAP_HEIGHT for _ in range(self.MAP_WIDTH)]
+        # start of DIJKSTRA CODE
+        dist = self.make_2d_array(float("inf"))
+        parents = self.make_2d_array(-1)
 
         queue = []
         # find tiles on my team
-        towers = []
-        for x in range(self.MAP_WIDTH):
-            for y in range(self.MAP_HEIGHT):
-                st = map[x][y].structure
-                # check the tile is not empty
-                if st is not None:
-                    # check the structure on the tile is on my team
-                    if st.team == player_info.team:
-                        dist[x][y] = 0
-                        queue.append((0,(x,y)))
-                        if st.type == StructureType.TOWER:
-                            towers.append(st)
+        for x,y in P(range(self.MAP_WIDTH),range(self.MAP_HEIGHT)):
+            st = map[x][y].structure
+            # check the tile is not empty
+            if st is not None and st.team == player_info.team:
+                dist[x][y] = 0
+                queue.append((0,(x,y)))
 
         while queue:
             path_len, (x,y) = heappop(queue)
@@ -137,6 +131,14 @@ class MyPlayer(Player):
                         if edge_len + path_len < dist[nx][ny]:
                             dist[nx][ny], parents[nx][ny] = edge_len + path_len, (x,y)
                             heappush(queue, (edge_len + path_len, (nx,ny)))
+        # END OF DIJKSTRA
+
+        towers = []
+        for x,y in P(range(self.MAP_WIDTH),range(self.MAP_HEIGHT)):
+            st = map[x][y].structure
+            if st is not None and st.team == player_info.team:
+                if st.type == StructureType.TOWER:
+                    towers.append(st)
         
         served = [[0] * self.MAP_HEIGHT for _ in range(self.MAP_WIDTH)]
         for tower in towers:
@@ -173,14 +175,12 @@ class MyPlayer(Player):
             cost = -ncost
             value = -nvalue
 
-            '''d_util = self.evaluate(best[0], best[1], map, served)
+            d_util = self.evaluate(best[0], best[1], map, served)
             if util != d_util:
                 print(best, util, d_util)
                 heappush(poss, (curval, -cost, best, d_util))
-                continue'''
-
-            #print('HI')    
-
+                continue
+                
             if mle < cost:
                 skips += 1
                 if svalue == -1 and (cost - mle) < 5 * (100 + player_info.utility):
