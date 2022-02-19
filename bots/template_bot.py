@@ -46,7 +46,21 @@ class MyPlayer(Player):
 
 
 
-        return 
+        return
+
+    def evaluate(self, x, y, map, served):
+        d_util = 0
+
+        def inside(x,y):
+            return 0 <= x and x < self.MAP_WIDTH and 0 <= y and y < self.MAP_HEIGHT
+        
+        for dx,dy in self.tower_reach:
+            nx, ny = x + dx, y + dy
+            if inside(nx,ny) and served[nx][ny] == 0:
+                d_util += map[nx][ny].population
+
+        return d_util
+        
 
     def play_turn(self, turn_num, map, player_info):
         self.turn = turn_num
@@ -101,24 +115,50 @@ class MyPlayer(Player):
         #      and if we have to wait for awhile
         
         #find best location to go to and build
-        best, value = (0,0), 0
+        poss = []
         for x,y in P(range(self.MAP_WIDTH), range(self.MAP_HEIGHT)):
             # not owned by us or opponent and reachable
             if dist[x][y] > 0 and dist[x][y] < 10000000:
-                d_util = 0
-                for dx,dy in self.tower_reach:
-                    nx, ny = x + dx, y + dy
-                    if inside(nx,ny) and served[nx][ny] == 0:
-                        d_util += map[nx][ny].population
+                d_util = self.evaluate(x, y, map, served)
                 cost = dist[x][y] + 240 * map[x][y].passability
 
                 curval = d_util / cost
-                if curval > value: 
-                    value = curval
-                    best = (x,y)
+                heappush(poss, (-curval, -cost, (x, y), d_util))
+        poss.sort()
 
-        #build it
-        if value > 0:
+        svalue = -1
+        skips = 0
+
+        while poss:
+            nvalue, ncost, best, util = heappop(poss)
+            cost = -ncost
+            value = -nvalue
+
+            '''d_util = self.evaluate(best[0], best[1], map, served)
+            if util != d_util:
+                print(best, util, d_util)
+                heappush(poss, (curval, -cost, best, d_util))
+                continue'''
+
+            #print('HI')    
+
+            if player_info.money < cost:
+                skips += 1
+                if svalue == -1:
+                    svalue = value
+                #print('SKIP', cost, value)
+                continue
+
+            if value < svalue / 2 and skips > 10 or value <= 0:
+                #print('BREAK')
+                break
+
+            xb, yb = best
+            st = map[xb][yb].structure
+            if st != None:
+                #print('Built')
+                continue
+            
             path = [best]
             while True:
                 x,y = path[-1]
@@ -128,12 +168,12 @@ class MyPlayer(Player):
 
             path = path[::-1]
             for x,y in path[:-1]:
-                self.build(StructureType.ROAD, x, y)
+                st = map[xb][yb].structure
+                if st == None:
+                    self.build(StructureType.ROAD, x, y)
+                else:
+                    print('UM')
             tx,ty = path[-1]
             self.build(StructureType.TOWER, tx, ty)
-        else:
-            #box them out mf
-            #TODO
-            return
 
         return
