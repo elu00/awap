@@ -415,7 +415,6 @@ class Game:
         for turn_num in range(GC.NUM_ROUNDS):
             self.play_turn(turn_num)
 
-        # Win Condition: Returns True if Red wins
         rScore, bScore = self.p1_state.utility, self.p2_state.utility
         if rScore == bScore:
             # number of towers
@@ -435,9 +434,14 @@ class Game:
             rScore, bScore = self.p1_state.money, self.p2_state.money
         if rScore == bScore:
             # everything failed (basically impossible lmao)
-            rScore, bScore = 1,0
+            rScore = self.p1_state.time_bank.time_left
+            bScore = self.p2_state.time_bank.time_left
 
         self.winner = 1 if rScore > bScore else 2
+        if self.winner == 1:
+            print("Team.RED wins!")
+        else:
+            print("Team.BLUE wins!")
 
     '''
     Runs a single turn of the game
@@ -490,9 +494,7 @@ class Game:
                         player.play_turn(turn_num, self.map_copy(),state._copy())
                         t1 = time.time()
                         penalty = t1 - t0
-                        state.time_bank.time_left -= penalty
                         if state.time_bank.time_left < 0:
-                            state.time_bank.time_left = 0
                             raise TimeoutException
                     else:
                         t0 = time.time()
@@ -501,14 +503,20 @@ class Game:
                         t1 = time.time()
                         penalty = t1 - t0
                     state.time_bank.time_left -= penalty
-                    prev_time.append(penalty)
                 except TimeoutException as _:
                     state.time_bank.windows_warning()
                     print(f"[{GC.TIMEOUT} ROUND TIMEOUT START] {state.team} emptied their time bank.")
                     state.time_bank.paused_at = turn_num
+                    penalty = state.time_bank.time_left
+                    state.time_bank.time_left = 0
                 except Exception as e:
                     print("Exception from", state.team)
                     traceback.print_exc()
+                    penalty = state.time_bank.time_left
+                    state.time_bank.time_left = 0
+
+                # apply time penalty
+                prev_time.append(penalty)
             else:
                 print(f"{state.team} turn skipped - in timeout")
         # update game state based on player actions
