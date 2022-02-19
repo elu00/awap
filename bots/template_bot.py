@@ -20,33 +20,70 @@ class MyPlayer(Player):
 
         return
 
+    def make_2d_array(self, val):
+        return [[val for _ in range(self.MAP_HEIGHT)] for _ in range(self.MAP_WIDTH)]
+    def inside(self, x, y):
+        return 0 <= x and x < self.MAP_WIDTH and 0 <= y and y < self.MAP_HEIGHT
 
     # use rectangle of each CC
     def cost_to_box(self, map, player_info):
         
         return 
 
-    def grow(self, map, gen):
-        team = gen.team
-        Q = []
-        vis = [[-1]]
+    # returns conn comp from a team's structure
+    def grow(self, map, st):
+        Q = [(st.x, st.y)]
+        vis = self.make_2d_array(False)
+        while len(Q) > 0:
+            x,y = Q[-1]
+            Q.pop()
+            for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
+                (nx, ny) = (x + dx, y + dy)
+                if self.inside(nx,ny) and (not vis[nx][ny]):
+                    if map[nx][ny].structure is not None and map[nx][ny].structure.team == st.team:
+                        vis[nx][ny] = True
+                        Q.append((nx,ny))
+        comp = []
+        for x,y in P(range(self.MAP_WIDTH), range(self.MAP_HEIGHT)):
+            if vis[x][y]:
+                comp.append((x,y))
+        return comp
 
-
-    #calculates cost to box them and will do so if can afford
+    #calculates cost to box them
+    #returns list of corresponding borders of each generator/component
     def box_them(self, map, player_info):
         #find components of opponent
         opp_gens = []
         for x,y in P(range(self.MAP_WIDTH), range(self.MAP_HEIGHT)):
-            if map[x][y].st is not None and map[x][y].st.type == StructureType.GENERATOR:
-                opp_gens.append(map[x][y].st)
+            st = map[x][y].structure
+            if (st is not None) and st.type == StructureType.GENERATOR:
+                if st.team != player_info.team:
+                    opp_gens.append(map[x][y].structure)
         
+        comps = []
         for opp_gen in opp_gens:
-            self.grow(map, opp_gen)
+            comps.append(self.grow(map, opp_gen))
+        comps = list(set([tuple(set(x)) for x in comps]))
+        comps = [list(x) for x in comps]
 
+        def get_road_cost(x,y):
+            if self.inside(x,y): return map[x][y].passability * 10
+            else: return 0
 
-
-
-        return
+        cost = 0
+        borders = []
+        for comp in comps:
+            border = []
+            X = set([x for x,y in comp])
+            Y = set([y for x,y in comp])
+            x1, x2 = min(X) - 1, max(X) + 1
+            y1, y2 = min(Y) - 1, max(Y) + 1
+            for x,y in P(range(x1,x2 +1), range(y1, y2 + 1)):
+                if x not in set([x1,x2]) and y not in set([y1,y2]): continue
+                cost += get_road_cost(x,y)
+                border.append((x,y))
+            border.append(border)
+        return cost, borders
 
     def evaluate(self, x, y, map, served):
         d_util = 0
@@ -60,17 +97,15 @@ class MyPlayer(Player):
                 d_util += map[nx][ny].population
 
         return d_util
-        
+    
 
     def play_turn(self, turn_num, map, player_info):
         self.turn = turn_num
-        # bid 0 every turn
-        self.set_bid(0)
         self.MAP_WIDTH = len(map)
         self.MAP_HEIGHT = len(map[0])
+        
+        self.box_them(map, player_info)
 
-        def inside(x,y):
-            return 0 <= x and x < self.MAP_WIDTH and 0 <= y and y < self.MAP_HEIGHT
 
         dist = [[float("inf")] * self.MAP_HEIGHT for _ in range(self.MAP_WIDTH)]
         parents = [[-1] * self.MAP_HEIGHT for _ in range(self.MAP_WIDTH)]
@@ -95,7 +130,7 @@ class MyPlayer(Player):
             if path_len == dist[x][y]:
                 for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
                     (nx, ny) = (x + dx, y + dy)
-                    if not inside(nx,ny): continue
+                    if not self.inside(nx,ny): continue
                     st = map[nx][ny].structure
                     if st is None:
                         edge_len = map[nx][ny].passability * 10
@@ -108,7 +143,7 @@ class MyPlayer(Player):
             x,y = tower.x, tower.y
             for dx, dy in self.tower_reach:
                 nx, ny = x + dx, y + dy
-                if inside(nx,ny):
+                if self.inside(nx,ny):
                     served[nx][ny] = 1
 
         #TODO: make evaluation better take into account current money
