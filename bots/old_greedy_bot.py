@@ -34,6 +34,7 @@ class MyPlayer(Player):
     def grow(self, map, st):
         Q = [(st.x, st.y)]
         vis = self.make_2d_array(False)
+        vis[st.x][st.y] = True
         while len(Q) > 0:
             x,y = Q[-1]
             Q.pop()

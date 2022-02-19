@@ -1,6 +1,6 @@
 {
   "p1": "template_bot",
-  "p2": "random_bot",
-  "map": "flappy",
+  "p2": "old_greedy_bot",
+  "map": "clusters",
   "replay": null
 }

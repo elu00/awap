@@ -95,8 +95,37 @@ class MyPlayer(Player):
 
         return d_util
     
-    def dijkstra(self, map, team):
-        return False
+    def row_col(self, map, parents, dist, player_info):
+        opp = []
+        for x,y in P(range(self.MAP_WIDTH), range(self.MAP_HEIGHT)):
+            st = map[x][y].structure
+            if st is not None and st.team == self.opp(player_info.team):
+                opp.append((x,y))
+
+        X = set([x for x,y in opp])
+        Y = set([y for x,y in opp])
+
+        total_pop = 0
+        pop_x = [0] * self.MAP_WIDTH
+        pop_y = [0] * self.MAP_HEIGHT
+        for x,y in P(range(self.MAP_WIDTH), range(self.MAP_HEIGHT)):
+            total_pop += map[x][y].population
+            pop_x[x] += map[x][y].population
+            pop_y[y] += map[x][y].population
+
+        # 3 magic number so no OOB
+        for x in range(3, self.MAP_WIDTH-3):
+            if x < min(X):
+                if sum(pop_x[0:x-1]) > total_pop / 2:
+                    #build wall
+                    return
+
+            if x > max(X):
+                if sum(pop_x[x+2:]) > total_pop / 2:
+                    #build wall
+                    return
+
+
 
 
     def play_turn(self, turn_num, map, player_info):
@@ -132,6 +161,7 @@ class MyPlayer(Player):
                             dist[nx][ny], parents[nx][ny] = edge_len + path_len, (x,y)
                             heappush(queue, (edge_len + path_len, (nx,ny)))
         # END OF DIJKSTRA
+        # player_info.money -= self.row_col(map, parents, dist, player_info)
 
         towers = []
         for x,y in P(range(self.MAP_WIDTH),range(self.MAP_HEIGHT)):
@@ -183,7 +213,12 @@ class MyPlayer(Player):
 
         mle = player_info.money
         bt = 123
-        discount_factor = 0.8
+
+        n = self.MAP_HEIGHT * self.MAP_WIDTH
+        discount_factor = 0
+        if n < 1000: discount_factor = 0.9
+        elif n > 4000: discount_factor = 0.5
+        else: discount_factor = 0.5 + 0.4 * (n - 1000) / 3000
 
         #print(poss[0])
         
