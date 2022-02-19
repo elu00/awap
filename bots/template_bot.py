@@ -182,6 +182,7 @@ class MyPlayer(Player):
 
         mle = player_info.money
         bt = 123
+        discount_factor = 0.8
 
         #print(poss[0])
         
@@ -215,7 +216,7 @@ class MyPlayer(Player):
                     #print('SKIP', cost, value)
                     continue
 
-                if value < svalue / 2 or value <= 0:
+                if value < svalue * discount_factor or value <= 0:
                     #print('BREAK')
                     break
 
