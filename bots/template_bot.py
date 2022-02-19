@@ -160,8 +160,20 @@ class MyPlayer(Player):
                 cost = dist[x][y] + 240 * map[x][y].passability
 
                 curval = d_util / cost
-                heappush(poss, (-curval, -cost, (x, y), d_util))
-        poss.sort()
+                if curval > 0:
+                    heappush(poss, (-1, -curval, -cost, (x, y), d_util))
+
+
+                block = 0
+                
+                for dx in range(-2, 3):
+                    for dy in range(-2, 3):
+                        if abs(dx) + abs(dy) <= 2:
+                            if self.inside(x + dx, y + dy) and map[x + dx][y + dy].population > 0:
+                                block += map[x + dx][y + dy].population
+
+                if block:
+                    heappush(poss, (0, -block/cost, -cost, (x, y), d_util))
 
         svalue = -1
         skips = 0
@@ -169,28 +181,46 @@ class MyPlayer(Player):
         ct = 0
 
         mle = player_info.money
+        bt = 123
+
+        #print(poss[0])
         
         while poss:
-            nvalue, ncost, best, util = heappop(poss)
+            typ, nvalue, ncost, best, util = heappop(poss)
             cost = -ncost
             value = -nvalue
 
-            d_util = self.evaluate(best[0], best[1], map, served)
-            if util != d_util:
-                print(best, util, d_util)
-                heappush(poss, (curval, -cost, best, d_util))
-                continue
-                
-            if mle < cost:
-                skips += 1
-                if svalue == -1 and (cost - mle) < 5 * (100 + player_info.utility):
-                    svalue = value
-                #print('SKIP', cost, value)
-                continue
+            bt = min(bt, typ)
 
-            if value < svalue / 2 and skips > 10 or value <= 0:
-                #print('BREAK')
+            #if typ == 0:
+            #    print('HI0', bt)
+
+            if bt != typ:
                 break
+
+            #if typ == 0:
+            #   print('HI')
+
+            if typ == -1:
+                d_util = self.evaluate(best[0], best[1], map, served)
+                if util != d_util:
+                    print(best, util, d_util)
+                    heappush(poss, (typ, curval, -cost, best, d_util))
+                    continue
+                
+                if mle < cost:
+                    skips += 1
+                    if svalue == -1 and (cost - mle) < 5 * (100 + player_info.utility):
+                        svalue = value
+                    #print('SKIP', cost, value)
+                    continue
+
+                if value < svalue / 2 or value <= 0:
+                    #print('BREAK')
+                    break
+
+            if mle < cost:
+                continue
 
             xb, yb = best
             st = map[xb][yb].structure
@@ -205,24 +235,35 @@ class MyPlayer(Player):
                 if dist[px][py] == 0: break
                 path.append((px,py))
 
-            path = path[::-1]
-            for x,y in path[:-1]:
-                st = map[xb][yb].structure
-                if st == None:
-                    self.build(StructureType.ROAD, x, y)
-                    mle -= 10 * map[x][y].passability
-                else:
-                    print('UM')
-            tx,ty = path[-1]
+            if typ == -1:
+                path = path[::-1]
+                for x,y in path[:-1]:
+                    st = map[xb][yb].structure
+                    if st == None:
+                        self.build(StructureType.ROAD, x, y)
+                        mle -= 10 * map[x][y].passability
+                    else:
+                        print('UM')
+                tx,ty = path[-1]
 
-            assert (tx, ty) == (xb, yb)
-            assert map[tx][ty].structure == None
-            
-            ct += 1
-            self.build(StructureType.TOWER, tx, ty)
-            mle -= 250 * map[tx][ty].passability
+                assert (tx, ty) == (xb, yb)
+                assert map[tx][ty].structure == None
+                
+                ct += 1
+                self.build(StructureType.TOWER, tx, ty)
+                mle -= 250 * map[tx][ty].passability
+            else:
+                #print('HI2')
+                path = path[::-1]
+                for x,y in path:
+                    st = map[xb][yb].structure
+                    if st == None:
+                        self.build(StructureType.ROAD, x, y)
+                        mle -= 10 * map[x][y].passability
+                    else:
+                        print('UM')
 
-            assert mle > 0
+            assert mle >= 0
             #assert map[tx][ty].structure != None
             
         if ct > 1:
