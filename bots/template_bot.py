@@ -10,30 +10,54 @@ from src.game_constants import GameConstants as GC
 
 
 class MyPlayer(Player):
-
     def __init__(self):
         print("Init")
         self.turn = 0
+        self.tower_reach = []
+        for x,y in P(range(-2,3), repeat = 2):
+            if abs(x) + abs(y) <= 2:
+                self.tower_reach.append((x,y))
 
         return
 
 
+    # use rectangle of each CC
+    def cost_to_box(self, map, player_info):
+        
+        return 
+
+    def grow(self, map, gen):
+        team = gen.team
+        Q = []
+        vis = [[-1]]
+
+
+    #calculates cost to box them and will do so if can afford
+    def box_them(self, map, player_info):
+        #find components of opponent
+        opp_gens = []
+        for x,y in P(range(self.MAP_WIDTH), range(self.MAP_HEIGHT)):
+            if map[x][y].st is not None and map[x][y].st.type == StructureType.GENERATOR:
+                opp_gens.append(map[x][y].st)
+        
+        for opp_gen in opp_gens:
+            self.grow(map, opp_gen)
+
+
+
+
+        return 
+
     def play_turn(self, turn_num, map, player_info):
+        self.turn = turn_num
         # bid 0 every turn
         self.set_bid(0)
-
         self.MAP_WIDTH = len(map)
         self.MAP_HEIGHT = len(map[0])
 
         def inside(x,y):
             return 0 <= x and x < self.MAP_WIDTH and 0 <= y and y < self.MAP_HEIGHT
 
-        tower_reach = []
-        for x,y in P(range(-2,3), repeat = 2):
-            if abs(x) + abs(y) <= 2:
-                tower_reach.append((x,y))
-
-        n = self.MAP_HEIGHT * self.MAP_WIDTH
         dist = [[float("inf")] * self.MAP_HEIGHT for _ in range(self.MAP_WIDTH)]
         parents = [[-1] * self.MAP_HEIGHT for _ in range(self.MAP_WIDTH)]
 
@@ -68,19 +92,21 @@ class MyPlayer(Player):
         served = [[0] * self.MAP_HEIGHT for _ in range(self.MAP_WIDTH)]
         for tower in towers:
             x,y = tower.x, tower.y
-            for dx, dy in tower_reach:
+            for dx, dy in self.tower_reach:
                 nx, ny = x + dx, y + dy
                 if inside(nx,ny):
                     served[nx][ny] = 1
 
+        #TODO: make evaluation better take into account current money
+        #      and if we have to wait for awhile
         
         #find best location to go to and build
         best, value = (0,0), 0
-        for x,y in P(range(self.MAP_HEIGHT), range(self.MAP_WIDTH)):
+        for x,y in P(range(self.MAP_WIDTH), range(self.MAP_HEIGHT)):
             # not owned by us or opponent and reachable
             if dist[x][y] > 0 and dist[x][y] < 10000000:
                 d_util = 0
-                for dx,dy in tower_reach:
+                for dx,dy in self.tower_reach:
                     nx, ny = x + dx, y + dy
                     if inside(nx,ny) and served[nx][ny] == 0:
                         d_util += map[nx][ny].population
