@@ -166,9 +166,10 @@ class MyPlayer(Player):
 
                 block = 0
                 
+                # finds potential blocks
                 for dx in range(-2, 3):
                     for dy in range(-2, 3):
-                        if abs(dx) + abs(dy) <= 2:
+                        if abs(dx) + abs(dy) == 2:
                             if self.inside(x + dx, y + dy) and map[x + dx][y + dy].population > 0:
                                 block += map[x + dx][y + dy].population
 
