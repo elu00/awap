@@ -164,6 +164,10 @@ class MyPlayer(Player):
         svalue = -1
         skips = 0
 
+        ct = 0
+
+        mle = player_info.money
+        
         while poss:
             nvalue, ncost, best, util = heappop(poss)
             cost = -ncost
@@ -177,9 +181,9 @@ class MyPlayer(Player):
 
             #print('HI')    
 
-            if player_info.money < cost:
+            if mle < cost:
                 skips += 1
-                if svalue == -1:
+                if svalue == -1 and (cost - mle) < 5 * (100 + player_info.utility):
                     svalue = value
                 #print('SKIP', cost, value)
                 continue
@@ -206,9 +210,22 @@ class MyPlayer(Player):
                 st = map[xb][yb].structure
                 if st == None:
                     self.build(StructureType.ROAD, x, y)
+                    mle -= 10 * map[x][y].passability
                 else:
                     print('UM')
             tx,ty = path[-1]
+
+            assert (tx, ty) == (xb, yb)
+            assert map[tx][ty].structure == None
+            
+            ct += 1
             self.build(StructureType.TOWER, tx, ty)
+            mle -= 250 * map[tx][ty].passability
+
+            assert mle > 0
+            #assert map[tx][ty].structure != None
+            
+        if ct > 1:
+            print(ct)
 
         return
